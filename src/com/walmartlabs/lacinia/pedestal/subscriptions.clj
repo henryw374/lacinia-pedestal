@@ -321,7 +321,10 @@
                         (assoc
                           ::lacinia/connection-params (:connection-params context)
                           constants/parsed-query-key parsed-query))
-        cleanup-fn (executor/invoke-streamer app-context source-stream)]
+        {:keys [cleanup-fn query-context query-response]
+         :or {query-context identity
+              query-response (fn [_ response] response)}}
+        (executor/invoke-streamer app-context source-stream)]
     (go-loop []
       (alt!
 
@@ -337,16 +340,20 @@
         ([value]
          (if (some? value)
            (do
-             (-> app-context
-                 (assoc ::executor/resolved-value value)
+             (let [ctx (-> app-context
+                           (assoc ::executor/resolved-value value)
+                           query-context)]
+               (->
+                 ctx
                  executor/execute-query
                  (resolve/on-deliver! (fn [response]
-                                        (put! response-data-ch
-                                              {:type :data
-                                               :id id
-                                               :payload response})))
-                  ;; Don't execute the query in a limited go block thread
-                 thread)
+                                        (let [response (query-response ctx response)]
+                                          (put! response-data-ch
+                                            {:type :data
+                                             :id id
+                                             :payload response}))))
+                 ;; Don't execute the query in a limited go block thread
+                 thread))
              (recur))
            (do
               ;; The streamer has signalled that it has exhausted the subscription.

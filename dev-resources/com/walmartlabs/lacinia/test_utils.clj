@@ -45,7 +45,7 @@
                              (source-stream nil))]
     (.start (Thread. runnable "stream-ping-thread")))
   ;; Return a cleanup fn:
-  #(swap! *ping-cleanups inc))
+  {:cleanup-fn #(swap! *ping-cleanups inc)})
 
 (defn ^:private make-service
   "The special option :indirect-schema wraps the schema in a function; this exercises some

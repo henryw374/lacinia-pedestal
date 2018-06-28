@@ -25,7 +25,7 @@
               (timeout 1000) (recur (dec countdown))))
           (source-stream nil))))
     ;; Cleanup:
-    #(close! abort-ch)))
+    {:cleanup-fn #(close! abort-ch)}))
 
 (defn start-server
   [_]
